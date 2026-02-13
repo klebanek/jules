@@ -19,7 +19,7 @@ header('Content-Type: application/json; charset=utf-8');
 // Obsługa preflight request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit;
+    die();
 }
 
 // Funkcja wysyłki odpowiedzi JSON
@@ -30,7 +30,7 @@ function sendJsonResponse($success, $message, $data = []) {
         'data' => $data,
         'timestamp' => date('Y-m-d H:i:s')
     ]);
-    exit;
+    die();
 }
 
 // Sprawdzenie metody żądania
@@ -50,9 +50,25 @@ $totalDocuments = isset($_POST['totalDocuments']) ? intval($_POST['totalDocument
 
 // Informacje o pliku
 $fileTmpPath = $_FILES['file']['tmp_name'];
-$fileName = $_FILES['file']['name'];
+$fileNameRaw = $_FILES['file']['name']; // Original filename
 $fileSize = $_FILES['file']['size'];
 $fileType = $_FILES['file']['type'];
+
+// Sanityzacja nazwy pliku (SECURITY FIX)
+$fileName = basename($fileNameRaw);
+// Pozwól tylko na bezpieczne znaki (alfanumeryczne, _, -, .)
+$fileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $fileName);
+// Usuń wielokrotne kropki
+$fileName = preg_replace('/\.+/', '.', $fileName);
+// Domyślna nazwa jeśli wynik jest pusty
+if (empty($fileName) || $fileName === '.') {
+    $fileName = 'document.xlsx';
+}
+// Wymuś poprawne rozszerzenie
+$ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+if (!in_array($ext, ['xlsx', 'xls'])) {
+    $fileName = pathinfo($fileName, PATHINFO_FILENAME) . '.xlsx';
+}
 
 // Walidacja typu pliku
 $allowedTypes = [
@@ -83,6 +99,9 @@ $attachment = chunk_split(base64_encode($fileContent));
 $boundary = md5(time());
 
 $subject = "ELMAR - Dokumenty wydania z dnia " . date('d.m.Y', strtotime($date));
+
+// Bezpieczne wyświetlanie nazwy pliku w HTML
+$fileNameSafeHtml = htmlspecialchars($fileName);
 
 $emailBody = "
 <!DOCTYPE html>
@@ -118,7 +137,7 @@ $emailBody = "
                 <strong>📄 Liczba dokumentów:</strong> {$totalDocuments}
             </div>
             <div class=\"info-row\">
-                <strong>📎 Plik:</strong> {$fileName} (" . round($fileSize / 1024, 2) . " KB)
+                <strong>📎 Plik:</strong> {$fileNameSafeHtml} (" . round($fileSize / 1024, 2) . " KB)
             </div>
             
             <p style=\"margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 3px solid #ffc107;\">
