@@ -2734,11 +2734,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <script>
         // ELMAR PWA Application - Complete Version
@@ -2753,10 +2748,84 @@
                 this.showAllDocuments = false; // Domyślnie pokazuj tylko dzisiejsze
                 this.cameraPermissionGranted = false; // Status uprawnień do kamery
 
+                // Track loaded libraries
+                this.loadingScripts = {};
+                this.loadedLibraries = {
+                    scanner: false,
+                    pdf: false,
+                    excel: false
+                };
+
                 this.init();
             }
 
+
+            async loadScript(url) {
+                if (!this.loadingScripts) this.loadingScripts = {};
+                if (this.loadingScripts[url]) return this.loadingScripts[url];
+
+                this.loadingScripts[url] = new Promise((resolve, reject) => {
+                    // Check if script is already present (e.g. from previous session state or other sources)
+                    if (document.querySelector(`script[src="${url}"]`)) {
+                        resolve();
+                        return;
+                    }
+
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+                    document.body.appendChild(script);
+                });
+                return this.loadingScripts[url];
+            }
+
+            async loadLibrary(name) {
+                if (this.loadedLibraries[name]) return true;
+
+                // Use existing showLoadingOverlay
+                try {
+                    this.showLoadingOverlay(`Ładowanie modułu ${name}...`);
+                } catch(e) {
+                    console.warn('showLoadingOverlay not available', e);
+                }
+
+                try {
+                    switch (name) {
+                        case 'scanner':
+                            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js');
+                            break;
+                        case 'pdf':
+                            // Load jsPDF first, others depend on it or can be parallel?
+                            // Usually plugins depend on main lib. Let's load sequentially to be safe.
+                            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                            await Promise.all([
+                                this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'),
+                                this.loadScript('https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js')
+                            ]);
+                            break;
+                        case 'excel':
+                            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+                            break;
+                    }
+
+                    this.loadedLibraries[name] = true;
+                    if (typeof this.hideLoadingOverlay === 'function') this.hideLoadingOverlay();
+                    return true;
+                } catch (error) {
+                    console.error(`Error loading library ${name}:`, error);
+                    if (typeof this.hideLoadingOverlay === 'function') this.hideLoadingOverlay();
+                    if (typeof this.showNotification === 'function') {
+                        this.showNotification(`Błąd ładowania modułu ${name}. Sprawdź połączenie z internetem.`, 'error');
+                    } else {
+                        alert(`Błąd ładowania modułu ${name}. Sprawdź połączenie z internetem.`);
+                    }
+                    return false;
+                }
+            }
+
             async init() {
+
                 // Show splash screen
                 const splashScreen = document.getElementById('splashScreen');
 
@@ -3441,6 +3510,9 @@
                     return;
                 }
 
+                const loaded = await this.loadLibrary('excel');
+                if (!loaded) return;
+
                 this.showLoadingOverlay('Importowanie produktów...');
 
                 try {
@@ -3488,7 +3560,10 @@
                 document.getElementById('importFileInput').value = '';
             }
 
-            exportProductDatabase() {
+            async exportProductDatabase() {
+                const loaded = await this.loadLibrary('excel');
+                if (!loaded) return;
+
                 try {
                     const wb = XLSX.utils.book_new();
                     
@@ -3521,14 +3596,18 @@
             }
 
             async startScanner() {
-    this.showScreen('scannerScreen');
-    try {
-        await this.initializeScanner();
-    } catch (err) {
-        console.error(err);
-        this.showCameraError();
-    }
-}
+                // Lazy load scanner library
+                const loaded = await this.loadLibrary('scanner');
+                if (!loaded) return;
+
+                this.showScreen('scannerScreen');
+                try {
+                    await this.initializeScanner();
+                } catch (err) {
+                    console.error(err);
+                    this.showCameraError();
+                }
+            }
 
 async initializeScanner() {
     const videoEl = document.createElement('video');
@@ -4413,7 +4492,10 @@ async initializeScanner() {
                 this.showDynamicModal(modalHtml);
             }
 
-            generatePdfForDocs(selectedDocs) {
+            async generatePdfForDocs(selectedDocs) {
+                const loaded = await this.loadLibrary('pdf');
+                if (!loaded) return;
+
                 try {
                     const { jsPDF } = window.jspdf;
 
@@ -4638,6 +4720,9 @@ async initializeScanner() {
             }
 
             async sendPdfToOfficeForDocs(selectedDocs) {
+                const loaded = await this.loadLibrary('pdf');
+                if (!loaded) return;
+
                 try {
                     // Wyświetl komunikat ładowania
                     this.showNotification('Wysyłanie pliku PDF...', 'info');
@@ -5648,7 +5733,10 @@ Czy jesteś pewien?`;
                 this.showNotification('Wygenerowano podsumowanie', 'success');
             }
 
-            exportSummaryToExcel(dateFrom, dateTo) {
+            async exportSummaryToExcel(dateFrom, dateTo) {
+                const loaded = await this.loadLibrary('excel');
+                if (!loaded) return;
+
                 // Filter and sort documents
                 const filteredDocs = this.documents.filter(doc => {
                     const docDate = new Date(doc.date);
