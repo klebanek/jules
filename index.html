@@ -2328,8 +2328,8 @@
                 <form id="manualEntryForm" class="form">
                     <div class="form-group">
                         <label class="form-label" for="manualBarcode">Kod kreskowy (13 cyfr) *</label>
-                        <input type="text" class="form-control" id="manualBarcode" pattern="[0-9]{13}" maxlength="13" placeholder="Wprowadź 13-cyfrowy kod" required>
-                        <div id="barcodeStatus" class="input-status"></div>
+                        <input type="text" class="form-control" id="manualBarcode" pattern="[0-9]{13}" maxlength="13" placeholder="Wprowadź 13-cyfrowy kod" required aria-describedby="barcodeStatus">
+                        <div id="barcodeStatus" class="input-status" aria-live="polite"></div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="manualQuantity">Ilość *</label>
@@ -3849,20 +3849,20 @@ async initializeScanner() {
                 
                 if (value.length === 0) {
                     statusElement.innerHTML = '';
-                    input.style.borderColor = '';
+                    input.style.borderColor = ''; input.removeAttribute('aria-invalid');
                     return;
                 }
                 
                 if (value.length < 13) {
                     this.showBarcodeStatus(`Wpisano ${value.length}/13 cyfr`, 'warning');
-                    input.style.borderColor = 'var(--elmar-warning)';
+                    input.style.borderColor = 'var(--elmar-warning)'; input.setAttribute('aria-invalid', 'true');
                 } else if (value.length === 13) {
                     if (this.productDatabase[value]) {
                         this.showBarcodeStatus(`Produkt znaleziony: ${this.productDatabase[value]}`, 'success');
-                        input.style.borderColor = 'var(--elmar-success)';
+                        input.style.borderColor = 'var(--elmar-success)'; input.setAttribute('aria-invalid', 'false');
                     } else {
                         this.showBarcodeStatus('Kod nie istnieje w bazie - zostanie dodany jako nowy produkt', 'warning');
-                        input.style.borderColor = 'var(--elmar-warning)';
+                        input.style.borderColor = 'var(--elmar-warning)'; input.setAttribute('aria-invalid', 'false');
                     }
                 }
             }
@@ -3873,27 +3873,27 @@ async initializeScanner() {
 
                 // Only validate if user entered something
                 if (value.length === 0) {
-                    input.style.borderColor = '';
+                    input.style.borderColor = ''; input.removeAttribute('aria-invalid');
                     input.title = '';
                     return;
                 }
 
                 if (value.length === 13 && this.productDatabase[value]) {
-                    input.style.borderColor = 'var(--elmar-error)';
+                    input.style.borderColor = 'var(--elmar-error)'; input.setAttribute('aria-invalid', 'true');
                     const existingName = this.productDatabase[value];
                     input.title = `Kod już istnieje: ${existingName}`;
                 } else if (value.length === 13) {
-                    input.style.borderColor = 'var(--elmar-success)';
+                    input.style.borderColor = 'var(--elmar-success)'; input.setAttribute('aria-invalid', 'false');
                     input.title = '';
                 } else {
-                    input.style.borderColor = '';
+                    input.style.borderColor = ''; input.removeAttribute('aria-invalid');
                     input.title = '';
                 }
             }
 
             showBarcodeStatus(message, type) {
                 const statusElement = document.getElementById('barcodeStatus');
-                statusElement.innerHTML = message;
+                const icon = type === "success" ? "✅ " : "⚠️ "; statusElement.innerHTML = `<span aria-hidden="true">${icon}</span>${message}`;
                 statusElement.className = `input-status ${type}`;
             }
 
