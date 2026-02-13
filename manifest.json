@@ -1,0 +1,16 @@
+{
+  "name": "ELMAR PWA - Śledzenie Produktów",
+  "short_name": "ELMAR PWA",
+  "description": "System śledzenia produktów rybnych ELMAR",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#046276",
+  "theme_color": "#046276",
+  "icons": [
+    {
+      "src": "./logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
