@@ -1,0 +1,4 @@
+## 2025-02-14 - Unsafe File Name Handling in PHP Mail Scripts
+**Vulnerability:** The `send_pdf.php` and `send_excel.php` scripts used `$_FILES['file']['name']` directly in email headers (Content-Disposition) without sanitization. This could allow an attacker to inject malicious headers (CRLF injection) or spoof the filename/extension, potentially confusing the recipient or the email system.
+**Learning:** Always sanitize user-provided filenames, especially when using them in sensitive contexts like email headers or file system operations. Relying on client-side validation or `$_FILES['type']` is insufficient as these can be easily spoofed.
+**Prevention:** Use a whitelist approach for characters (e.g., alphanumeric + specific safe characters) and enforce the expected file extension on the server side. Alternatively, generate a completely new, safe filename server-side and ignore the user-provided one.
