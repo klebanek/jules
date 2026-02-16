@@ -2859,11 +2859,14 @@
 
             // Helper functions for handling products without barcodes
             generatePseudoBarcode() {
-                // Format: "NO" + 10-digit timestamp + 1 random digit = 13 chars
-                // Example: "NO16734567890"
+                // Format: "NO" + 10-digit timestamp + 1-digit counter = 13 chars
+                // Improved uniqueness for rapid generation while preserving long-term uniqueness
+                if (typeof this.barcodeCounter === 'undefined') {
+                    this.barcodeCounter = Math.floor(Math.random() * 10);
+                }
                 const timestamp = Date.now().toString().slice(-10);
-                const random = Math.floor(Math.random() * 10);
-                return `NO${timestamp}${random}`;
+                const counter = (this.barcodeCounter++ % 10);
+                return `NO${timestamp}${counter}`;
             }
 
             isPseudoBarcode(barcode) {
