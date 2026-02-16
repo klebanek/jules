@@ -1,4 +1,5 @@
 <?php
+ini_set("display_errors", 0);
 /**
  * ELMAR PWA - Wspólne funkcje dla skryptów wysyłki
  */
@@ -198,4 +199,3 @@ function logMail($worker, $date, $fileName) {
 
     @file_put_contents($logFile, $logEntry, FILE_APPEND);
 }
-?>

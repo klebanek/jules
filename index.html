@@ -4931,7 +4931,23 @@ async initializeScanner() {
                         body: formData
                     });
 
-                    const result = await response.json();
+                    const responseText = await response.text();
+                    let result;
+                    try {
+                        result = JSON.parse(responseText);
+                    } catch (e) {
+                        console.error('Błąd parsowania JSON. Otrzymano:', responseText);
+                        const preview = responseText.length > 500 ? responseText.substring(0, 500) + '...' : responseText;
+                        // Sprawdź czy to HTML (częsty błąd 404/500)
+                        if (preview.trim().startsWith('<')) {
+                             throw new Error('Serwer zwrócił stronę HTML zamiast JSON. Sprawdź konfigurację serwera (czy obsługuje PHP?). Treść: ' + preview);
+                        }
+                        throw new Error('Serwer zwrócił nieprawidłowe dane. Treść: ' + preview);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error('Błąd HTTP ' + response.status + ': ' + (result.message || response.statusText));
+                    }
 
                     if (result.success) {
                         this.showNotification('Plik PDF został wysłany do biura!', 'success');

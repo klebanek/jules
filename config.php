@@ -11,4 +11,3 @@ $FROM_EMAIL = 'PWA@elmar.pl';
 
 // Nazwa nadawcy
 $FROM_NAME = 'ELMAR PWA System';
-?>
