@@ -67,4 +67,3 @@ if ($mailSent) {
 } else {
     sendJsonResponse(false, 'Błąd podczas wysyłania emaila. Spróbuj ponownie później.');
 }
-?>
