@@ -1,0 +1,16 @@
+# Local configuration
+config.local.php
+
+# Logs
+/logs/
+
+# PHP
+.php_cs.cache
+.phpunit.result.cache
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
