@@ -10,10 +10,19 @@ require_once __DIR__ . '/config.php';
  * Nagłówki CORS i obsługa preflight request
  */
 function handleCors() {
-    header('Access-Control-Allow-Origin: *');
+    global $ALLOWED_ORIGINS;
+
+    $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+
+    // Sprawdzenie czy origin jest na liście dozwolonych
+    if (in_array($origin, $ALLOWED_ORIGINS)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+    }
+
     header('Access-Control-Allow-Methods: POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type');
     header('Content-Type: application/json; charset=utf-8');
+    header('Vary: Origin');
 
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         http_response_code(200);

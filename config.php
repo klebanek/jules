@@ -11,3 +11,12 @@ $FROM_EMAIL = 'PWA@elmar.pl';
 
 // Nazwa nadawcy
 $FROM_NAME = 'ELMAR PWA System';
+
+// Dozwolone domeny dla CORS (bez kończącego slasha)
+$ALLOWED_ORIGINS = [
+    'https://klebanek.github.io',
+    'http://localhost',
+    'http://localhost:8000',
+    'http://127.0.0.1',
+    'http://127.0.0.1:8000'
+];
