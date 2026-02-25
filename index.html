@@ -2874,6 +2874,39 @@
                 return barcode && barcode.startsWith('NO') && barcode.length === 13;
             }
 
+            /**
+             * Generuje obraz kodu kreskowego (base64) dla podanego kodu.
+             * @param {string} barcode - Kod kreskowy EAN13.
+             * @param {HTMLCanvasElement} [canvas] - Opcjonalny płótno do ponownego wykorzystania (optymalizacja).
+             * @returns {string|null} - Obraz w formacie base64 lub null w przypadku błędu.
+             */
+            generateBarcodeImage(barcode, canvas = null) {
+                if (!barcode || barcode.length < 12) {
+                    return null;
+                }
+
+                const targetCanvas = canvas || document.createElement('canvas');
+                try {
+                    // Sprawdź czy JsBarcode jest dostępny
+                    if (typeof JsBarcode === 'undefined') {
+                        console.warn('JsBarcode nie jest załadowany');
+                        return null;
+                    }
+
+                    JsBarcode(targetCanvas, barcode, {
+                        format: "EAN13",
+                        width: 2,
+                        height: 40,
+                        displayValue: false,
+                        margin: 0
+                    });
+                    return targetCanvas.toDataURL('image/png');
+                } catch (error) {
+                    console.error('Błąd generowania kodu kreskowego dla:', barcode, error);
+                    return null;
+                }
+            }
+
             isRealBarcode(barcode) {
                 // Real barcodes are 13 numeric digits
                 return barcode && /^\d{13}$/.test(barcode);
@@ -4525,37 +4558,12 @@ async initializeScanner() {
                         return text.replace(/[ąĄćĆęĘłŁńŃóÓśŚźŹżŻ]/g, char => polishMap[char] || char);
                     };
 
-                    // Funkcja pomocnicza do generowania kodu kreskowego jako obrazu
-                    const generateBarcodeImage = (barcode) => {
-                        if (!barcode || barcode.length < 12) {
-                            return null;
-                        }
-
-                        const canvas = document.createElement('canvas');
-                        try {
-                            // Sprawdź czy JsBarcode jest dostępny
-                            if (typeof JsBarcode === 'undefined') {
-                                console.warn('JsBarcode nie jest załadowany');
-                                return null;
-                            }
-
-                            JsBarcode(canvas, barcode, {
-                                format: "EAN13",
-                                width: 2,
-                                height: 40,
-                                displayValue: false,
-                                margin: 0
-                            });
-                            return canvas.toDataURL('image/png');
-                        } catch (error) {
-                            console.error('Błąd generowania kodu kreskowego dla:', barcode, error);
-                            return null;
-                        }
-                    };
-
                     const doc = new jsPDF('p', 'mm', 'a4');
+                    const sharedCanvas = document.createElement('canvas');
+                    let productCounter = 0;
 
-                    selectedDocs.forEach((document, docIndex) => {
+                    for (let docIndex = 0; docIndex < selectedDocs.length; docIndex++) {
+                        const document = selectedDocs[docIndex];
                         if (docIndex > 0) {
                             doc.addPage();
                         }
@@ -4589,8 +4597,9 @@ async initializeScanner() {
                         const tableData = [];
                         const barcodeImages = [];
 
-                        document.products.forEach((product, index) => {
-                            const barcodeImage = generateBarcodeImage(product.barcode);
+                        for (let index = 0; index < document.products.length; index++) {
+                            const product = document.products[index];
+                            const barcodeImage = this.generateBarcodeImage(product.barcode, sharedCanvas);
                             barcodeImages.push(barcodeImage);
 
                             // Format expiry date for PDF
@@ -4607,7 +4616,13 @@ async initializeScanner() {
                                 '', // Placeholder dla kodu graficznego
                                 product.notes ? removePolishChars(product.notes) : '-'
                             ]);
-                        });
+
+                            // Optymalizacja: Oddaj kontrolę do głównego wątku co 10 produktów, aby nie blokować UI
+                            productCounter++;
+                            if (productCounter % 10 === 0) {
+                                await new Promise(resolve => setTimeout(resolve, 0));
+                            }
+                        }
 
                         // Tabela produktów z kolumną dla graficznego kodu kreskowego
                         // Szerokość strony A4: 210mm, z marginesami (10mm z każdej strony) = 190mm dostępne
@@ -4687,7 +4702,7 @@ async initializeScanner() {
                         doc.setFont(undefined, 'normal');
                         doc.text('Laczna liczba pozycji: ' + document.products.length, 20, finalY + 6);
                         doc.text('Laczna liczba sztuk: ' + document.products.reduce((sum, p) => sum + p.quantity, 0), 20, finalY + 12);
-                    });
+                    }
 
                     const filename = 'ELMAR_Dokumenty_' + new Date().toISOString().split('T')[0] + '.pdf';
                     doc.save(filename);
@@ -4749,37 +4764,12 @@ async initializeScanner() {
                         return text.replace(/[ąĄćĆęĘłŁńŃóÓśŚźŹżŻ]/g, char => polishMap[char] || char);
                     };
 
-                    // Funkcja pomocnicza do generowania kodu kreskowego jako obrazu
-                    const generateBarcodeImage = (barcode) => {
-                        if (!barcode || barcode.length < 12) {
-                            return null;
-                        }
-
-                        const canvas = document.createElement('canvas');
-                        try {
-                            // Sprawdź czy JsBarcode jest dostępny
-                            if (typeof JsBarcode === 'undefined') {
-                                console.warn('JsBarcode nie jest załadowany');
-                                return null;
-                            }
-
-                            JsBarcode(canvas, barcode, {
-                                format: "EAN13",
-                                width: 2,
-                                height: 40,
-                                displayValue: false,
-                                margin: 0
-                            });
-                            return canvas.toDataURL('image/png');
-                        } catch (error) {
-                            console.error('Błąd generowania kodu kreskowego dla:', barcode, error);
-                            return null;
-                        }
-                    };
-
                     const doc = new jsPDF('p', 'mm', 'a4');
+                    const sharedCanvas = document.createElement('canvas');
+                    let productCounter = 0;
 
-                    selectedDocs.forEach((document, docIndex) => {
+                    for (let docIndex = 0; docIndex < selectedDocs.length; docIndex++) {
+                        const document = selectedDocs[docIndex];
                         if (docIndex > 0) {
                             doc.addPage();
                         }
@@ -4813,8 +4803,9 @@ async initializeScanner() {
                         const tableData = [];
                         const barcodeImages = [];
 
-                        document.products.forEach((product, index) => {
-                            const barcodeImage = generateBarcodeImage(product.barcode);
+                        for (let index = 0; index < document.products.length; index++) {
+                            const product = document.products[index];
+                            const barcodeImage = this.generateBarcodeImage(product.barcode, sharedCanvas);
                             barcodeImages.push(barcodeImage);
 
                             // Format expiry date for PDF
@@ -4831,7 +4822,13 @@ async initializeScanner() {
                                 '', // Placeholder dla kodu graficznego
                                 product.notes ? removePolishChars(product.notes) : '-'
                             ]);
-                        });
+
+                            // Optymalizacja: Oddaj kontrolę do głównego wątku co 10 produktów, aby nie blokować UI
+                            productCounter++;
+                            if (productCounter % 10 === 0) {
+                                await new Promise(resolve => setTimeout(resolve, 0));
+                            }
+                        }
 
                         // Tabela produktów z kolumną dla graficznego kodu kreskowego
                         // Szerokość strony A4: 210mm, z marginesami (10mm z każdej strony) = 190mm dostępne
@@ -4911,7 +4908,7 @@ async initializeScanner() {
                         doc.setFont(undefined, 'normal');
                         doc.text('Laczna liczba pozycji: ' + document.products.length, 20, finalY + 6);
                         doc.text('Laczna liczba sztuk: ' + document.products.reduce((sum, p) => sum + p.quantity, 0), 20, finalY + 12);
-                    });
+                    }
 
                     const filename = 'ELMAR_Dokumenty_' + new Date().toISOString().split('T')[0] + '.pdf';
 
